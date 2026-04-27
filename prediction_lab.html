@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Lab</title>
+    <!-- html2canvas for PNG export only -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            /* Colors: Academic, warm, modern */
+            --bg-color: #f8fafc;
+            --surface-color: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #e2e8f0;
+            --secondary-hover: #cbd5e1;
+            --accent: #0ea5e9;
+            --success: #047857; /* Darkened for WCAG AA contrast */
+            --warning: #b45309; /* Darkened for WCAG AA contrast */
+            --border: #cbd5e1;
+            --focus-ring: rgba(37, 99, 235, 0.5);
+            --radius: 8px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Layout & Container */
+        .app-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 { font-size: 2.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--text-main); border-bottom: 2px solid var(--secondary); padding-bottom: 0.5rem;}
+        h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-main); }
+        p { margin-bottom: 1rem; color: var(--text-muted); }
+
+        .subtitle { font-size: 1.125rem; color: var(--text-muted); }
+
+        /* Progress Indicator */
+        .progress-container {
+            display: none; /* hidden on welcome screen */
+            margin-bottom: 2rem;
+            background: var(--surface-color);
+            padding: 1rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+        .progress-steps::before {
+            content: ''; position: absolute; top: 50%; left: 0; right: 0;
+            height: 2px; background: var(--secondary); z-index: 1;
+            transform: translateY(-50%);
+        }
+        .step-indicator {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: var(--secondary); color: var(--text-muted);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; z-index: 2; position: relative;
+            transition: all 0.3s ease;
+        }
+        .step-indicator.active { background: var(--primary); color: white; box-shadow: 0 0 0 4px var(--focus-ring); }
+        .step-indicator.completed { background: var(--success); color: white; }
+
+        /* Panels */
+        .panel {
+            background: var(--surface-color);
+            padding: 2.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 2rem;
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        .panel.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Forms */
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); }
+        .help-text { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block; }
+        
+        input[type="text"], input[type="url"], textarea, select {
+            width: 100%; padding: 0.75rem;
+            border: 1px solid var(--border); border-radius: var(--radius);
+            font-family: inherit; font-size: 1rem; color: var(--text-main);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+        }
+        textarea { resize: vertical; min-height: 100px; }
+        input:focus, textarea:focus, select:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+
+        /* Buttons */
+        .btn-group { display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem; }
+        .btn-group.right { justify-content: flex-end; }
+        
+        button {
+            padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;
+            border-radius: var(--radius); border: none; cursor: pointer;
+            transition: all 0.2s ease; font-family: inherit;
+        }
+        button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        
+        .btn-secondary { background: var(--secondary); color: var(--text-main); }
+        .btn-secondary:hover { background: var(--secondary-hover); }
+        
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Coaching Feedback */
+        .coaching-cue {
+            font-size: 0.875rem; color: var(--primary);
+            background: #eff6ff; padding: 0.5rem 0.75rem;
+            border-radius: var(--radius); margin-top: 0.5rem;
+            border-left: 3px solid var(--primary);
+            display: none; animation: fadeIn 0.3s ease;
+        }
+
+        /* Theory Cards */
+        .theory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .theory-card {
+            border: 2px solid var(--border); border-radius: var(--radius);
+            padding: 1rem; cursor: pointer; transition: all 0.2s;
+            background: var(--surface-color); position: relative;
+        }
+        .theory-card:hover { border-color: var(--primary); }
+        .theory-card.selected { border-color: var(--primary); background: #eff6ff; box-shadow: 0 0 0 1px var(--primary); }
+        
+        /* Keyboard Focus for Theory Cards */
+        .theory-card:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--focus-ring); }
+        
+        .theory-card h4 { font-size: 1rem; margin-bottom: 0.25rem; display: flex; align-items: center; justify-content: space-between; }
+        .theory-card input[type="checkbox"] { position: absolute; opacity: 0; }
+        .theory-card input[type="checkbox"]:focus-visible + h4 { text-decoration: underline; color: var(--primary); }
+        .theory-details { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+        /* Evidence Cards */
+        .evidence-list { display: flex; flex-direction: column; gap: 1.5rem; }
+        .evidence-card {
+            background: var(--bg-color); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.5rem; position: relative;
+        }
+        .remove-evidence {
+            position: absolute; top: 1rem; right: 1rem;
+            background: #fee2e2; color: #dc2626; border: none;
+            border-radius: var(--radius); padding: 0.25rem 0.5rem;
+            font-size: 0.875rem; cursor: pointer;
+        }
+        .remove-evidence:hover { background: #fca5a5; }
+
+        /* Radios */
+        fieldset { border: none; margin-bottom: 1.5rem; }
+        legend { font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); }
+        .radio-group { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+        .radio-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.95rem; }
+        .radio-label input[type="radio"] { width: 1.2rem; height: 1.2rem; accent-color: var(--primary); }
+
+        /* YouTube Preview */
+        .yt-preview {
+            background: var(--bg-color); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.5rem; text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .yt-preview img {
+            max-width: 100%; height: auto; border-radius: var(--radius);
+            box-shadow: var(--shadow); margin-bottom: 1rem; max-height: 240px; object-fit: cover;
+        }
+        .yt-reminder { color: var(--warning); font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; background: #fffbeb; padding: 1rem; border-radius: var(--radius); border-left: 4px solid var(--warning); }
+        
+        /* Revision Section */
+        .revision-card {
+            border-left: 4px solid var(--primary); background: var(--bg-color);
+            padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 0 var(--radius) var(--radius) 0;
+        }
+        .original-pred { font-style: italic; color: var(--text-muted); margin-bottom: 1rem; background: #fff; padding: 1rem; border-radius: var(--radius); border: 1px dashed var(--border); }
+
+        /* Checkbox wrapper */
+        .checkbox-wrapper { display: flex; align-items: flex-start; gap: 0.75rem; margin: 1.5rem 0; padding: 1rem; background: var(--surface-color); border: 1px solid var(--border); border-radius: var(--radius); }
+        .checkbox-wrapper input[type="checkbox"] { width: 1.5rem; height: 1.5rem; accent-color: var(--primary); margin-top: 0.1rem;}
+        .checkbox-wrapper label { margin-bottom: 0; font-weight: normal; cursor: pointer;}
+
+        /* Export view (Hidden by default, used for html2canvas) */
+        #export-view {
+            position: absolute; left: -9999px; top: 0; width: 850px;
+            background: #fff; color: #000; padding: 40px; font-family: var(--font-family);
+        }
+        .export-header { border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+        .export-section { margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px; }
+        .export-section:last-child { border-bottom: none; }
+        .export-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .export-meta { font-size: 14px; color: #555; margin-bottom: 5px; }
+        .export-h2 { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #000; }
+        .export-h3 { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #333; }
+        .export-qa { margin-bottom: 15px; }
+        .export-q { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #444; }
+        .export-a { font-size: 14px; padding-left: 15px; border-left: 3px solid #ccc; }
+        .export-evidence { background: #f9f9f9; padding: 15px; border: 1px solid #eee; margin-bottom: 10px; page-break-inside: avoid; }
+        .export-evidence-row { display: flex; margin-bottom: 5px; font-size: 14px; }
+        .export-evidence-label { font-weight: bold; width: 120px; flex-shrink: 0; }
+        .export-pill { display: inline-block; padding: 3px 8px; background: #eee; border-radius: 4px; font-size: 12px; margin-right: 5px; margin-bottom: 5px; border: 1px solid #ccc;}
+
+        /* Utilities */
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+        
+        /* Focus management for accessibility */
+        .step-focus-target:focus { outline: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>Prediction Lab</h1>
+        <p class="subtitle">Analyze children's media using developmental psychology.</p>
+    </header>
+
+    <div class="progress-container" id="progress-container">
+        <div class="progress-steps" id="progress-steps">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+
+    <main>
+        <!-- STEP 1: Welcome -->
+        <div class="panel active" id="step-1" role="region" aria-labelledby="h-step-1">
+            <h2 id="h-step-1" class="step-focus-target" tabindex="-1">Welcome to Prediction Lab</h2>
+            <p>This interactive tool will help you apply developmental psychology to children's media. Before you watch a clip or play a game, you will make theory-based predictions. Then, you will watch/play, gather evidence, and revise your claims.</p>
+            <p>
+            <strong>Tab:</strong> Move forward to the next interactive element (input, button, link, checkbox).<br>
+            <strong>Shift + Tab:</strong> Move backward to the previous element.<br>
+            <strong>Spacebar:</strong> Select/deselect a checkbox, activate a button, or open a dropdown menu.<br>
+            <strong>Enter:</strong> Activate a button, open a link, or confirm a dropdown selection.<br>
+            <strong>Arrow Keys (Up/Down/Left/Right):</strong> Move between radio button options within a group, or scroll through a dropdown menu.<br>
+            <strong>Escape (Esc):</strong> Close a dropdown menu without making a selection.
+           </p>
+            
+            <div style="background: var(--surface-color); padding: 1.5rem; border-radius: var(--radius); border: 2px solid var(--secondary); margin: 2rem 0;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="preset-media" style="font-size: 1.125rem;">Select Assignment Media <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                    <p class="help-text">Choose the specific media clip or interactive game you have been assigned to analyze.</p>
+                    <select id="preset-media" style="font-size: 1rem; padding: 0.75rem; border: 2px solid var(--primary); cursor: pointer;" required>
+                        <option value="">-- Choose an option --</option>
+                        <option value="https://youtu.be/9PnbKL3wuH4?si=Tb7ULTC36zRyKpB6">Sesame Street: Me Want It (But Me Wait)</option>
+                        <option value="https://youtu.be/cUWum01nY-U?si=J4p_b-upvSkeBC2V">Dora the Explorer: Learn Spanish!</option>
+                        <option value="https://pbskids.org/games/play/alma-on-the-case/1603521">Alma's Way: Alma On the Case</option>
+                        <option value="https://pbskids.org/games/play/world-rescue/1217012">Wild Kratts: World Rescue</option>
+                         <option value="https://pbskids.org/games/play/cyber-sound-quest/1478988">Cyberchase: Cyber Sound Quest</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-color); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; border: 1px solid var(--border);">
+                <h3>Your Goals</h3>
+                <ul style="margin-left: 1.5rem; color: var(--text-main);">
+                    <li style="margin-bottom: 0.5rem;"><strong>Predict:</strong> Make a theory-based claim about how children may respond to the media.</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Test:</strong> Gather specific evidence from the clip/game to test your prediction.</li>
+                    <li><strong>Revise:</strong> Strengthen your claim into a developmental analysis.</li>
+                </ul>
+            </div>
+            
+            <p><em>Note: This tool runs entirely in your browser. No data is saved or collected. You will export your work as an image at the end.</em></p>
+            
+            <div class="btn-group right">
+                <button class="btn-primary" onclick="beginAssignment()">Begin Assignment</button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Clip Setup -->
+        <div class="panel" id="step-2" role="region" aria-labelledby="h-step-2">
+            <h2 id="h-step-2" class="step-focus-target" tabindex="-1">Media Setup</h2>
+            <p>Enter the details of the media clip or game you are analyzing.</p>
+            
+            <div class="form-group">
+                <label for="show-title">Show / Game Title <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                <input type="text" id="show-title" placeholder="e.g., Sesame Street or Alma's Way" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="clip-title">Episode or Specific Mini-Game</label>
+                <input type="text" id="clip-title" placeholder="e.g., Cookie Monster Learns to Share">
+            </div>
+
+            <div class="form-group">
+                <label for="yt-url">Media URL (YouTube or Game Link) <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                <span class="help-text">Paste the full link. Do not open or watch it yet!</span>
+                <input type="url" id="yt-url" placeholder="https://..." required>
+            </div>
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label for="age-group">Intended Age Group <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                    <input type="text" id="age-group" placeholder="e.g., Preschoolers (3-5 years)" required>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label for="clip-length">Approximate Length</label>
+                    <input type="text" id="clip-length" placeholder="e.g., 3 minutes">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="clip-context">Brief Context</label>
+                <span class="help-text">What is the basic premise of this media or character? (1-2 sentences)</span>
+                <textarea id="clip-context" placeholder="Enter brief context here..."></textarea>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(1)">Back</button>
+                <button class="btn-primary" onclick="validateAndNext(2, 3)">Continue to Predictions</button>
+            </div>
+        </div>
+
+        <!-- STEP 3: Pre-Viewing Predictions -->
+        <div class="panel" id="step-3" role="region" aria-labelledby="h-step-3">
+            <h2 id="h-step-3" class="step-focus-target" tabindex="-1">Pre-Viewing Predictions</h2>
+            <div class="yt-reminder">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                Important: Complete these predictions based on the title and context BEFORE watching or playing.
+            </div>
+            
+            <p>Based on what you know about the intended age group and the premise, make your predictions.</p>
+
+            <div class="form-group">
+                <label for="pred-teach">1. What is this media likely trying to teach, support, or communicate?</label>
+                <textarea id="pred-teach" class="coached-input" placeholder="The creators likely want children to learn..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="pred-attention">2. What parts of the media are children likely to pay the most attention to?</label>
+                <textarea id="pred-attention" class="coached-input" placeholder="Children will probably focus on..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="pred-learn">3. What might children learn correctly from this experience?</label>
+                <textarea id="pred-learn" class="coached-input" placeholder="They are likely to successfully grasp..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="pred-miss">4. What might children misunderstand, miss, or oversimplify?</label>
+                <textarea id="pred-miss" class="coached-input" placeholder="Because of their developmental stage, they might misunderstand..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(2)">Back</button>
+                <button class="btn-primary" onclick="validateAndNext(3, 4)">Ready to Watch/Play</button>
+            </div>
+        </div>
+
+        <!-- STEP 4: Watch Step -->
+        <div class="panel" id="step-4" role="region" aria-labelledby="h-step-4">
+            <h2 id="h-step-4" class="step-focus-target" tabindex="-1">Experience the Media</h2>
+            
+            <div class="yt-preview" id="yt-preview-container">
+                <h3 id="display-show-title">Show Title</h3>
+                <p id="display-clip-title" style="margin-bottom: 1.5rem;"></p>
+                <img id="yt-thumbnail" src="" alt="Thumbnail Preview" style="display:none;">
+                <br>
+                <button class="btn-outline" onclick="openMedia()" id="btn-open-media">
+                    <svg style="vertical-align: middle; margin-right: 8px;" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    Open Media Link <span class="sr-only">(opens in a new tab)</span>
+                </button>
+            </div>
+
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="watched-confirm">
+                <label for="watched-confirm"><strong>I have viewed or played the media completely</strong> and I am ready to analyze it using a developmental lens.</label>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(3)">Back</button>
+                <button class="btn-primary" onclick="validateWatchAndNext()">Continue to Theory Lens</button>
+            </div>
+        </div>
+
+        <!-- STEP 5: Theory Lens -->
+        <div class="panel" id="step-5" role="region" aria-labelledby="h-step-5">
+            <h2 id="h-step-5" class="step-focus-target" tabindex="-1">Select Theory Lens</h2>
+            <p>Select <strong>one or two</strong> developmental concepts that are most relevant to analyzing this media.</p>
+            
+            <div class="theory-grid" id="theory-grid">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(4)">Back</button>
+                <button class="btn-primary" onclick="validateTheoryAndNext()">Continue to Evidence</button>
+            </div>
+        </div>
+
+        <!-- STEP 6: Evidence Collection -->
+        <div class="panel" id="step-6" role="region" aria-labelledby="h-step-6">
+            <h2 id="h-step-6" class="step-focus-target" tabindex="-1">Evidence Collection</h2>
+            <p>Identify specific moments in the media that connect to your chosen theory lenses. Ask yourself: <em>Does this moment support or challenge my original predictions?</em></p>
+            
+            <div id="evidence-container" class="evidence-list">
+                <!-- Dynamic Evidence Cards Go Here -->
+            </div>
+
+            <button class="btn-outline" style="margin-top: 1.5rem; width: 100%; border-style: dashed;" onclick="addEvidenceCard()">+ Add Another Piece of Evidence</button>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(5)">Back</button>
+                <button class="btn-primary" onclick="nextStep(7)">Continue to Revision</button>
+            </div>
+        </div>
+
+        <!-- STEP 7: Prediction Check & Revision -->
+        <div class="panel" id="step-7" role="region" aria-labelledby="h-step-7">
+            <h2 id="h-step-7" class="step-focus-target" tabindex="-1">Prediction Check & Revision</h2>
+            <p>Review your initial predictions against the evidence you just gathered. Select a status and provide a brief explanation for how your thinking has evolved.</p>
+
+            <div id="revision-container">
+                <!-- Dynamically populated based on Step 3 -->
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(6)">Back</button>
+                <button class="btn-primary" onclick="nextStep(8)">Continue to Synthesis</button>
+            </div>
+        </div>
+
+        <!-- STEP 8: Final Synthesis & Export -->
+        <div class="panel" id="step-8" role="region" aria-labelledby="h-step-8">
+            <h2 id="h-step-8" class="step-focus-target" tabindex="-1">Final Synthesis</h2>
+            <p>Synthesize your analysis into a final conclusion.</p>
+
+            <div class="form-group">
+                <label for="synth-takeaway">Based on your evidence, what is a child most likely to take away from this media?</label>
+                <textarea id="synth-takeaway" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-impact">What is the likely emotional, attentional, or learning impact?</label>
+                <textarea id="synth-impact" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-limitation">What is one possible limitation, confusion point, or missed opportunity in the media?</label>
+                <textarea id="synth-limitation" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-effectiveness">Overall, how developmentally effective is this for its intended audience?</label>
+                <textarea id="synth-effectiveness" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-change">What is one change that would make the media more developmentally effective?</label>
+                <textarea id="synth-change" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div style="background: #eff6ff; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--primary); text-align: center; margin-top: 2rem;">
+                <h3 style="color: var(--primary);">Assignment Complete!</h3>
+                <p>Review your answers above. When you are ready, export your analysis as a polished image file to submit.</p>
+                <button class="btn-primary" style="font-size: 1.125rem; padding: 1rem 2rem;" onclick="generateExport()" id="btn-export">Export as PNG</button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(7)">Back</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden Export Template for html2canvas -->
+    <div id="export-view" aria-hidden="true">
+        <div class="export-header">
+            <div class="export-title">Prediction Lab Analysis</div>
+            <div class="export-meta" id="ex-show"><strong>Show / Game:</strong> <span></span></div>
+            <div class="export-meta" id="ex-clip"><strong>Clip / Detail:</strong> <span></span></div>
+            <div class="export-meta" id="ex-url"><strong>URL:</strong> <span></span></div>
+            <div class="export-meta" id="ex-age"><strong>Target Age:</strong> <span></span></div>
+            <div class="export-meta" id="ex-context"><strong>Context:</strong> <span></span></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">1. Pre-Viewing Predictions vs. Revisions</div>
+            <div id="ex-revisions-container"></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">2. Selected Theory Lenses</div>
+            <div id="ex-theories" style="margin-bottom: 10px;"></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">3. Gathered Evidence</div>
+            <div id="ex-evidence-container"></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">4. Final Synthesis</div>
+            <div class="export-qa">
+                <div class="export-q">Likely Takeaway:</div>
+                <div class="export-a" id="ex-takeaway"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Developmental Impact:</div>
+                <div class="export-a" id="ex-impact"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Limitation / Missed Opportunity:</div>
+                <div class="export-a" id="ex-limitation"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Overall Effectiveness:</div>
+                <div class="export-a" id="ex-effectiveness"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Suggested Change:</div>
+                <div class="export-a" id="ex-change"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Application State ---
+    let currentStep = 1;
+    const totalSteps = 8;
+    
+    const theoriesData = [
+        { id: 't_attention', title: 'Attention', desc: 'How children focus on, filter, and sustain engagement with stimuli.' },
+        { id: 't_memory', title: 'Memory', desc: 'How information is encoded, stored, and retrieved over time.' },
+        { id: 't_language', title: 'Language Dev.', desc: 'How vocabulary, syntax, and communication skills are modeled and acquired.' },
+        { id: 't_social', title: 'Social Learning', desc: 'Learning through observing others\' behaviors, rewards, and consequences.' },
+        { id: 't_executive', title: 'Executive Function', desc: 'Cognitive processes like working memory, flexible thinking, and self-control.' },
+        { id: 't_emotional', title: 'Emotional Dev.', desc: 'Recognizing, expressing, and managing feelings, as well as empathy.' },
+        { id: 't_identity', title: 'Identity / Rep.', desc: 'How media shapes self-concept, gender roles, and understanding of others.' },
+        { id: 't_scaffolding', title: 'Scaffolding', desc: 'Support structures in media that help a child reach a higher level of understanding.' },
+        { id: 't_cogload', title: 'Cognitive Load', desc: 'The amount of mental effort required to process the visual/audio information.' },
+        { id: 't_devapp', title: 'Dev. Appropriateness', desc: 'Matching content pacing, themes, and complexity to the child\'s cognitive stage.' }
+    ];
+
+    const feedbackPrompts = [
+        "Try naming a specific moment from the media.",
+        "Can you connect this idea to a developmental concept?",
+        "Focus on what a child is likely to experience, not just your opinion.",
+        "This sounds a bit broad. What specific evidence supports it?",
+        "Expand slightly: How exactly might a child interpret this?"
+    ];
+
+    // --- Initialization ---
+    document.addEventListener("DOMContentLoaded", () => {
+        initProgress();
+        renderTheoryCards();
+        addEvidenceCard(); // Start with one evidence card
+        setupCoachingCues();
+    });
+
+    // --- Navigation & Flow ---
+    function initProgress() {
+        const container = document.getElementById('progress-steps');
+        for (let i = 2; i <= totalSteps; i++) {
+            const step = document.createElement('div');
+            step.className = `step-indicator ${i === 2 ? 'active' : ''}`;
+            step.id = `ind-${i}`;
+            // Added sr-only text for screen readers
+            step.innerHTML = `<span class="sr-only">${i === 2 ? 'Current Step ' : 'Step '}</span>${i - 1}`;
+            step.title = `Step ${i-1}`;
+            container.appendChild(step);
+        }
+    }
+
+    function updateProgress(step) {
+        if (step === 1) {
+            document.getElementById('progress-container').style.display = 'none';
+        } else {
+            document.getElementById('progress-container').style.display = 'block';
+            for (let i = 2; i <= totalSteps; i++) {
+                const ind = document.getElementById(`ind-${i}`);
+                if (ind) {
+                    if (i < step) {
+                        ind.className = 'step-indicator completed';
+                        // Added sr-only completed text for screen readers
+                        ind.innerHTML = `<span class="sr-only">Completed Step ${i - 1}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    } else if (i === step) {
+                        ind.className = 'step-indicator active';
+                        // Added sr-only current step text
+                        ind.innerHTML = `<span class="sr-only">Current Step </span>${i - 1}`;
+                    } else {
+                        ind.className = 'step-indicator';
+                        // Standard step for unreached sections
+                        ind.innerHTML = `<span class="sr-only">Step </span>${i - 1}`;
+                    }
+                }
+            }
+        }
+    }
+
+    function goToStep(step) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(`step-${step}`).classList.add('active');
+        updateProgress(step);
+        currentStep = step;
+        
+        // Accessibility: move focus to step heading
+        const heading = document.getElementById(`h-step-${step}`);
+        if(heading) heading.focus();
+        
+        // Step specific logic
+        if (step === 4) setupWatchStep();
+        if (step === 7) setupRevisionStep();
+        
+        window.scrollTo(0, 0);
+    }
+
+    function nextStep(step) { goToStep(step); }
+    function prevStep(step) { goToStep(step); }
+
+    // --- Specific Flow Handlers ---
+    function beginAssignment() {
+        const presetSel = document.getElementById('preset-media');
+        const presetVal = presetSel.value;
+        
+        if (!presetVal) {
+            alert("Please select a media assignment option to begin.");
+            presetSel.focus();
+            return;
+        }
+
+        const urlEl = document.getElementById('yt-url');
+        const showEl = document.getElementById('show-title');
+        const clipEl = document.getElementById('clip-title');
+
+        if (presetVal !== 'custom') {
+            urlEl.value = presetVal;
+            const text = presetSel.options[presetSel.selectedIndex].text;
+            
+            // Basic text splitting to pre-fill fields nicely
+            if (text.includes(':')) {
+                const parts = text.split(':');
+                showEl.value = parts[0].trim();
+                clipEl.value = parts[1].trim();
+            } else {
+                showEl.value = text;
+                clipEl.value = "";
+            }
+        }
+        
+        nextStep(2);
+    }
+
+    // --- Validations ---
+    function validateAndNext(current, next) {
+        let valid = true;
+        if (current === 2) {
+            const reqIds = ['show-title', 'yt-url', 'age-group'];
+            reqIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el.value.trim()) {
+                    el.style.borderColor = 'var(--warning)';
+                    valid = false;
+                } else {
+                    el.style.borderColor = 'var(--border)';
+                }
+            });
+            if(!valid) alert("Please fill in the required fields (marked with *).");
+        }
+        if (current === 3) {
+            // Soft validation for predictions to ensure they aren't totally empty
+            const pIds = ['pred-teach', 'pred-attention', 'pred-learn', 'pred-miss'];
+            let filled = 0;
+            pIds.forEach(id => { if (document.getElementById(id).value.trim().length > 10) filled++; });
+            if (filled < 2) {
+                valid = confirm("Your predictions seem very short. Are you sure you're ready to proceed to the media experience?");
+            }
+        }
+        if (valid) nextStep(next);
+    }
+
+    function validateWatchAndNext() {
+        if (!document.getElementById('watched-confirm').checked) {
+            alert("Please check the box confirming you have experienced the media before continuing.");
+            return;
+        }
+        nextStep(5);
+    }
+
+    function validateTheoryAndNext() {
+        const checked = document.querySelectorAll('.theory-card input[type="checkbox"]:checked');
+        if (checked.length === 0) {
+            alert("Please select at least one theory lens.");
+            return;
+        }
+        nextStep(6);
+    }
+
+    // --- Feature: Media/YouTube Logic ---
+    function extractYouTubeID(url) {
+        const regExp = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const match = url.match(regExp);
+        return (match && match[1]) ? match[1] : null;
+    }
+
+    function setupWatchStep() {
+        const url = document.getElementById('yt-url').value.trim();
+        const show = document.getElementById('show-title').value.trim() || 'Show Title';
+        const clip = document.getElementById('clip-title').value.trim();
+        
+        document.getElementById('display-show-title').innerText = show;
+        document.getElementById('display-clip-title').innerText = clip;
+
+        const ytID = extractYouTubeID(url);
+        const imgEl = document.getElementById('yt-thumbnail');
+        
+        if (ytID) {
+            imgEl.src = `https://img.youtube.com/vi/${ytID}/hqdefault.jpg`;
+            imgEl.style.display = 'inline-block';
+        } else {
+            // Failsafe for non-YouTube links (like PBS Kids games)
+            imgEl.style.display = 'none';
+        }
+    }
+
+    function openMedia() {
+        let url = document.getElementById('yt-url').value.trim();
+        if(url && !url.startsWith('http')) url = 'https://' + url;
+        if(url) window.open(url, '_blank');
+    }
+
+    // --- Feature: Theory Lens ---
+    function renderTheoryCards() {
+        const grid = document.getElementById('theory-grid');
+        theoriesData.forEach(t => {
+            const card = document.createElement('label');
+            card.className = 'theory-card';
+            card.innerHTML = `
+                <input type="checkbox" value="${t.title}" id="${t.id}" onchange="handleTheorySelection(this)">
+                <h4>${t.title}</h4>
+                <div class="theory-details">${t.desc}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function handleTheorySelection(checkbox) {
+        const checkedBoxes = document.querySelectorAll('.theory-card input[type="checkbox"]:checked');
+        if (checkedBoxes.length > 2) {
+            checkbox.checked = false;
+            alert("Please select a maximum of two lenses to keep your analysis focused.");
+            return;
+        }
+        document.querySelectorAll('.theory-card').forEach(card => {
+            const cb = card.querySelector('input');
+            if(cb.checked) card.classList.add('selected');
+            else card.classList.remove('selected');
+        });
+    }
+
+    // --- Feature: Evidence Collection ---
+    let evidenceCount = 0;
+    function addEvidenceCard() {
+        evidenceCount++;
+        const container = document.getElementById('evidence-container');
+        const id = `ev-${Date.now()}`;
+        
+        const card = document.createElement('div');
+        card.className = 'evidence-card';
+        card.id = id;
+        
+        card.innerHTML = `
+            ${evidenceCount > 1 ? `<button class="remove-evidence" onclick="document.getElementById('${id}').remove()" aria-label="Remove evidence">Remove</button>` : ''}
+            
+            <div class="form-group">
+                <label>Scene / Moment Label</label>
+                <input type="text" class="ev-scene" placeholder="e.g., When the puppet drops the block or user clicks..." required>
+            </div>
+            
+            <div class="form-group">
+                <label>What happened?</label>
+                <textarea class="ev-desc" placeholder="Describe exactly what happens visually and audibly..."></textarea>
+            </div>
+            
+            <fieldset>
+                <legend>How does this connect to your prediction?</legend>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="ev_status_${id}" value="Supported"> Supported</label>
+                    <label class="radio-label"><input type="radio" name="ev_status_${id}" value="Complicated"> Complicated</label>
+                    <label class="radio-label"><input type="radio" name="ev_status_${id}" value="Challenged"> Challenged</label>
+                </div>
+            </fieldset>
+        `;
+        container.appendChild(card);
+    }
+
+    // --- Feature: Revision Step ---
+    const predictionMap = [
+        { id: 'pred-teach', label: 'Intended Teaching Goal' },
+        { id: 'pred-attention', label: 'Attention Focus' },
+        { id: 'pred-learn', label: 'Correct Learning' },
+        { id: 'pred-miss', label: 'Misunderstanding / Simplification' }
+    ];
+
+    function setupRevisionStep() {
+        const container = document.getElementById('revision-container');
+        container.innerHTML = ''; // clear previous
+
+        predictionMap.forEach((p, index) => {
+            const originalVal = document.getElementById(p.id).value.trim();
+            if (!originalVal) return;
+
+            const html = `
+                <div class="revision-card">
+                    <h3>${p.label}</h3>
+                    <div class="original-pred">" ${originalVal} "</div>
+                    
+                    <fieldset>
+                        <legend class="sr-only">Evaluation for ${p.label}</legend>
+                        <div class="radio-group" style="margin-bottom: 1rem;">
+                            <label class="radio-label"><input type="radio" name="rev_stat_${index}" value="Supported"> Supported</label>
+                            <label class="radio-label"><input type="radio" name="rev_stat_${index}" value="Partially supported"> Partially Supported</label>
+                            <label class="radio-label"><input type="radio" name="rev_stat_${index}" value="Not supported"> Not Supported</label>
+                            <label class="radio-label"><input type="radio" name="rev_stat_${index}" value="Needs revision"> Needs Revision</label>
+                        </div>
+                    </fieldset>
+                    
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Brief Explanation of Revision</label>
+                        <textarea class="rev-explain" id="rev-explain-${index}" placeholder="Based on the evidence, I now think..."></textarea>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+
+        if(container.innerHTML === '') {
+            container.innerHTML = '<p><em>No predictions were entered to revise.</em></p>';
+        }
+    }
+
+    // --- Feature: Coaching Feedback ---
+    function setupCoachingCues() {
+        document.querySelectorAll('.coached-input').forEach(input => {
+            input.addEventListener('blur', function() {
+                const val = this.value.trim();
+                const cueEl = this.nextElementSibling;
+                
+                if (val.length > 0 && val.length < 40) {
+                    const randomCue = feedbackPrompts[Math.floor(Math.random() * feedbackPrompts.length)];
+                    cueEl.innerText = randomCue;
+                    cueEl.style.display = 'block';
+                } else {
+                    cueEl.style.display = 'none';
+                }
+            });
+            input.addEventListener('input', function() {
+                if(this.value.trim().length > 40) {
+                    this.nextElementSibling.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // --- Feature: PNG Export ---
+    function generateExport() {
+        const btn = document.getElementById('btn-export');
+        btn.innerText = "Generating...";
+        btn.disabled = true;
+
+        // Populate hidden export view
+        document.getElementById('ex-show').querySelector('span').innerText = document.getElementById('show-title').value || 'N/A';
+        document.getElementById('ex-clip').querySelector('span').innerText = document.getElementById('clip-title').value || 'N/A';
+        document.getElementById('ex-url').querySelector('span').innerText = document.getElementById('yt-url').value || 'N/A';
+        document.getElementById('ex-age').querySelector('span').innerText = document.getElementById('age-group').value || 'N/A';
+        document.getElementById('ex-context').querySelector('span').innerText = document.getElementById('clip-context').value || 'N/A';
+
+        // Revisions
+        const revContainer = document.getElementById('ex-revisions-container');
+        revContainer.innerHTML = '';
+        predictionMap.forEach((p, i) => {
+            const orig = document.getElementById(p.id).value.trim();
+            if(!orig) return;
+            
+            let status = 'Not evaluated';
+            const statChecked = document.querySelector(`input[name="rev_stat_${i}"]:checked`);
+            if(statChecked) status = statChecked.value;
+            
+            const explainEl = document.getElementById(`rev-explain-${i}`);
+            const explain = explainEl ? explainEl.value : '';
+
+            revContainer.innerHTML += `
+                <div style="margin-bottom: 20px;">
+                    <div class="export-q">${p.label}</div>
+                    <div class="export-a" style="margin-bottom: 8px;"><strong>Initial:</strong> <em>${orig}</em></div>
+                    <div class="export-a">
+                        <span class="export-pill">${status}</span><br>
+                        <strong>Revision:</strong> ${explain || 'N/A'}
+                    </div>
+                </div>
+            `;
+        });
+
+        // Theories
+        const selectedTheories = Array.from(document.querySelectorAll('.theory-card input:checked')).map(cb => cb.value);
+        document.getElementById('ex-theories').innerHTML = selectedTheories.length > 0 
+            ? selectedTheories.map(t => `<span class="export-pill">${t}</span>`).join('') 
+            : 'None selected';
+
+        // Evidence
+        const evExport = document.getElementById('ex-evidence-container');
+        evExport.innerHTML = '';
+        document.querySelectorAll('.evidence-card').forEach((card, i) => {
+            const scene = card.querySelector('.ev-scene').value || `Evidence ${i+1}`;
+            const desc = card.querySelector('.ev-desc').value || 'No description provided.';
+            
+            let status = 'Unmarked';
+            const statChecked = card.querySelector(`input[type="radio"]:checked`);
+            if(statChecked) status = statChecked.value;
+
+            evExport.innerHTML += `
+                <div class="export-evidence">
+                    <div class="export-evidence-row"><div class="export-evidence-label">Moment:</div><div>${scene}</div></div>
+                    <div class="export-evidence-row"><div class="export-evidence-label">Description:</div><div>${desc}</div></div>
+                    <div class="export-evidence-row"><div class="export-evidence-label">Impact on Claim:</div><div><strong>${status}</strong></div></div>
+                </div>
+            `;
+        });
+
+        // Synthesis
+        document.getElementById('ex-takeaway').innerText = document.getElementById('synth-takeaway').value || 'N/A';
+        document.getElementById('ex-impact').innerText = document.getElementById('synth-impact').value || 'N/A';
+        document.getElementById('ex-limitation').innerText = document.getElementById('synth-limitation').value || 'N/A';
+        document.getElementById('ex-effectiveness').innerText = document.getElementById('synth-effectiveness').value || 'N/A';
+        document.getElementById('ex-change').innerText = document.getElementById('synth-change').value || 'N/A';
+
+        // Render with html2canvas
+        const exportView = document.getElementById('export-view');
+        
+        html2canvas(exportView, {
+            scale: 2, 
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            windowWidth: 850
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'Prediction_Lab_Analysis.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            btn.innerText = "Export as PNG";
+            btn.disabled = false;
+        }).catch(err => {
+            console.error("Export failed:", err);
+            alert("Sorry, an error occurred during export. Please try again.");
+            btn.innerText = "Export as PNG";
+            btn.disabled = false;
+        });
+    }
+
+</script>
+</body>
+</html>
