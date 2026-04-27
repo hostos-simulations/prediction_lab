@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Lab</title>
+    <!-- html2canvas for PNG export only -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>Prediction Lab</h1>
+        <p class="subtitle">Analyze children's media using developmental psychology.</p>
+    </header>
+
+    <div class="progress-container" id="progress-container" aria-hidden="true">
+        <div class="progress-steps" id="progress-steps">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+
+    <main>
+        <!-- STEP 1: Welcome -->
+        <div class="panel active" id="step-1" role="region" aria-labelledby="h-step-1">
+            <h2 id="h-step-1" class="step-focus-target" tabindex="-1">Welcome to Prediction Lab</h2>
+            <p>This interactive tool will help you apply developmental psychology to children's media. Before you watch a clip or play a game, you will make theory-based predictions. Then, you will watch/play, gather evidence, and revise your claims.</p>
+            
+            <div style="background: var(--surface-color); padding: 1.5rem; border-radius: var(--radius); border: 2px solid var(--secondary); margin: 2rem 0;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="preset-media" style="font-size: 1.125rem;">Select Assignment Media <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                    <p class="help-text">Choose the specific media clip or interactive game you have been assigned to analyze.</p>
+                    <select id="preset-media" style="font-size: 1rem; padding: 0.75rem; border: 2px solid var(--primary); cursor: pointer;" required>
+                        <option value="">-- Choose an option --</option>
+                        <option value="https://youtu.be/9PnbKL3wuH4?si=Tb7ULTC36zRyKpB6">Sesame Street: Me Want It (But Me Wait)</option>
+                        <option value="https://youtu.be/cUWum01nY-U?si=J4p_b-upvSkeBC2V">Dora the Explorer: Learn Spanish!</option>
+                        <option value="https://pbskids.org/games/play/alma-on-the-case/1603521">Alma's Way: Alma On the Case</option>
+                        <option value="custom">Other / Custom Media Link</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-color); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; border: 1px solid var(--border);">
+                <h3>Your Goals</h3>
+                <ul style="margin-left: 1.5rem; color: var(--text-main);">
+                    <li style="margin-bottom: 0.5rem;"><strong>Predict:</strong> Make a theory-based claim about how children may respond to the media.</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Test:</strong> Gather specific evidence from the clip/game to test your prediction.</li>
+                    <li><strong>Revise:</strong> Strengthen your claim into a developmental analysis.</li>
+                </ul>
+            </div>
+            
+            <p><em>Note: This tool runs entirely in your browser. No data is saved or collected. You will export your work as an image at the end.</em></p>
+
+            <div style="background: var(--surface-color); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                <strong>Accessibility / Keyboard Commands:</strong>
+                <p style="margin-top: 0.5rem; margin-bottom: 0;">
+                  <strong>Tab:</strong> Move forward to the next interactive element (input, button, link, checkbox).<br>
+                  <strong>Shift + Tab:</strong> Move backward to the previous element.<br>
+                  <strong>Spacebar:</strong> Select/deselect a checkbox, activate a button, or open a dropdown menu.<br>
+                  <strong>Enter:</strong> Activate a button, open a link, or confirm a dropdown selection.<br>
+                  <strong>Arrow Keys (Up/Down/Left/Right):</strong> Move between radio button options within a group, or scroll through a dropdown menu.<br>
+                  <strong>Escape (Esc):</strong> Close a dropdown menu without making a selection.
+                </p>
+            </div>
+            
+            <div class="btn-group right">
+                <button class="btn-primary" onclick="beginAssignment()">Begin Assignment</button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Clip Setup -->
+        <div class="panel" id="step-2" role="region" aria-labelledby="h-step-2">
+            <h2 id="h-step-2" class="step-focus-target" tabindex="-1">Media Setup</h2>
+            <p>Enter the details of the media clip or game you are analyzing.</p>
+            
+            <div class="form-group">
+                <label for="show-title">Show / Game Title <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                <input type="text" id="show-title" placeholder="e.g., Sesame Street or Alma's Way" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="clip-title">Episode or Specific Mini-Game</label>
+                <input type="text" id="clip-title" placeholder="e.g., Cookie Monster Learns to Share">
+            </div>
+
+            <div class="form-group">
+                <label for="yt-url">Media URL (YouTube or Game Link) <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                <span class="help-text">Paste the full link. Do not open or watch it yet!</span>
+                <input type="url" id="yt-url" placeholder="https://..." required>
+            </div>
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label for="age-group">Intended Age Group <span style="color:#dc2626" aria-hidden="true">*</span></label>
+                    <input type="text" id="age-group" placeholder="e.g., Preschoolers (3-5 years)" required>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label for="clip-length">Approximate Length</label>
+                    <input type="text" id="clip-length" placeholder="e.g., 3 minutes">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="clip-context">Brief Context</label>
+                <span class="help-text">What is the basic premise of this media or character? (1-2 sentences)</span>
+                <textarea id="clip-context" placeholder="Enter brief context here..."></textarea>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(1)">Back</button>
+                <button class="btn-primary" onclick="validateAndNext(2, 3)">Continue to Predictions</button>
+            </div>
+        </div>
+
+        <!-- STEP 3: Pre-Viewing Predictions -->
+        <div class="panel" id="step-3" role="region" aria-labelledby="h-step-3">
+            <h2 id="h-step-3" class="step-focus-target" tabindex="-1">Pre-Viewing Predictions</h2>
+            <div class="yt-reminder">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                Important: Complete these predictions based on the title and context BEFORE watching or playing.
+            </div>
+            
+            <p>Based on what you know about the intended age group and the premise, make your predictions.</p>
+
+            <div class="form-group">
+                <label for="pred-teach">1. What is this media likely trying to teach, support, or communicate?</label>
+                <textarea id="pred-teach" class="coached-input" placeholder="The creators likely want children to learn..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="pred-attention">2. What parts of the media are children likely to pay the most attention to?</label>
+                <textarea id="pred-attention" class="coached-input" placeholder="Children will probably focus on..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="pred-learn">3. What might children learn correctly from this experience?</label>
+                <textarea id="pred-learn" class="coached-input" placeholder="They are likely to successfully grasp..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="pred-miss">4. What might children misunderstand, miss, or oversimplify?</label>
+                <textarea id="pred-miss" class="coached-input" placeholder="Because of their developmental stage, they might misunderstand..."></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(2)">Back</button>
+                <button class="btn-primary" onclick="validateAndNext(3, 4)">Ready to Watch/Play</button>
+            </div>
+        </div>
+
+        <!-- STEP 4: Watch Step -->
+        <div class="panel" id="step-4" role="region" aria-labelledby="h-step-4">
+            <h2 id="h-step-4" class="step-focus-target" tabindex="-1">Experience the Media</h2>
+            
+            <div class="yt-preview" id="yt-preview-container">
+                <h3 id="display-show-title">Show Title</h3>
+                <p id="display-clip-title" style="margin-bottom: 1.5rem;"></p>
+                <img id="yt-thumbnail" src="" alt="Thumbnail Preview" style="display:none;">
+                <br>
+                <button class="btn-outline" onclick="openMedia()" id="btn-open-media">
+                    <svg style="vertical-align: middle; margin-right: 8px;" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    Open Media Link <span class="sr-only">(opens in a new tab)</span>
+                </button>
+            </div>
+
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="watched-confirm">
+                <label for="watched-confirm"><strong>I have viewed or played the media completely</strong> and I am ready to analyze it using a developmental lens.</label>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(3)">Back</button>
+                <button class="btn-primary" onclick="validateWatchAndNext()">Continue to Theory Lens</button>
+            </div>
+        </div>
+
+        <!-- STEP 5: Theory Lens -->
+        <div class="panel" id="step-5" role="region" aria-labelledby="h-step-5">
+            <h2 id="h-step-5" class="step-focus-target" tabindex="-1">Select Theory Lens</h2>
+            <p>Select <strong>one or two</strong> developmental concepts that are most relevant to analyzing this media.</p>
+            
+            <div class="theory-grid" id="theory-grid">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(4)">Back</button>
+                <button class="btn-primary" onclick="validateTheoryAndNext()">Continue to Evidence</button>
+            </div>
+        </div>
+
+        <!-- STEP 6: Evidence Collection -->
+        <div class="panel" id="step-6" role="region" aria-labelledby="h-step-6">
+            <h2 id="h-step-6" class="step-focus-target" tabindex="-1">Evidence Collection</h2>
+            <p>Identify specific moments in the media that connect to your chosen theory lenses. Ask yourself: <em>Does this moment support or challenge my original predictions?</em></p>
+            
+            <div id="evidence-container" class="evidence-list">
+                <!-- Dynamic Evidence Cards Go Here -->
+            </div>
+
+            <button class="btn-outline" style="margin-top: 1.5rem; width: 100%; border-style: dashed;" onclick="addEvidenceCard()">+ Add Another Piece of Evidence</button>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(5)">Back</button>
+                <button class="btn-primary" onclick="nextStep(7)">Continue to Revision</button>
+            </div>
+        </div>
+
+        <!-- STEP 7: Prediction Check & Revision -->
+        <div class="panel" id="step-7" role="region" aria-labelledby="h-step-7">
+            <h2 id="h-step-7" class="step-focus-target" tabindex="-1">Prediction Check & Revision</h2>
+            <p>Review your initial predictions against the evidence you just gathered. Select a status and provide a brief explanation for how your thinking has evolved.</p>
+
+            <div id="revision-container">
+                <!-- Dynamically populated based on Step 3 -->
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(6)">Back</button>
+                <button class="btn-primary" onclick="nextStep(8)">Continue to Synthesis</button>
+            </div>
+        </div>
+
+        <!-- STEP 8: Final Synthesis & Export -->
+        <div class="panel" id="step-8" role="region" aria-labelledby="h-step-8">
+            <h2 id="h-step-8" class="step-focus-target" tabindex="-1">Final Synthesis</h2>
+            <p>Synthesize your analysis into a final conclusion.</p>
+
+            <div class="form-group">
+                <label for="synth-takeaway">Based on your evidence, what is a child most likely to take away from this media?</label>
+                <textarea id="synth-takeaway" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-impact">What is the likely emotional, attentional, or learning impact?</label>
+                <textarea id="synth-impact" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-limitation">What is one possible limitation, confusion point, or missed opportunity in the media?</label>
+                <textarea id="synth-limitation" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-effectiveness">Overall, how developmentally effective is this for its intended audience?</label>
+                <textarea id="synth-effectiveness" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="synth-change">What is one change that would make the media more developmentally effective?</label>
+                <textarea id="synth-change" class="coached-input"></textarea>
+                <div class="coaching-cue" aria-live="polite"></div>
+            </div>
+
+            <div style="background: #eff6ff; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--primary); text-align: center; margin-top: 2rem;">
+                <h3 style="color: var(--primary);">Assignment Complete!</h3>
+                <p>Review your answers above. When you are ready, export your analysis as a polished image file to submit.</p>
+                <button class="btn-primary" style="font-size: 1.125rem; padding: 1rem 2rem;" onclick="generateExport()" id="btn-export">Export as PNG</button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-secondary" onclick="prevStep(7)">Back</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden Export Template for html2canvas -->
+    <div id="export-view" aria-hidden="true">
+        <div class="export-header">
+            <div class="export-title">Prediction Lab Analysis</div>
+            <div class="export-meta" id="ex-show"><strong>Show / Game:</strong> <span></span></div>
+            <div class="export-meta" id="ex-clip"><strong>Clip / Detail:</strong> <span></span></div>
+            <div class="export-meta" id="ex-url"><strong>URL:</strong> <span></span></div>
+            <div class="export-meta" id="ex-age"><strong>Target Age:</strong> <span></span></div>
+            <div class="export-meta" id="ex-context"><strong>Context:</strong> <span></span></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">1. Pre-Viewing Predictions vs. Revisions</div>
+            <div id="ex-revisions-container"></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">2. Selected Theory Lenses</div>
+            <div id="ex-theories" style="margin-bottom: 10px;"></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">3. Gathered Evidence</div>
+            <div id="ex-evidence-container"></div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-h2">4. Final Synthesis</div>
+            <div class="export-qa">
+                <div class="export-q">Likely Takeaway:</div>
+                <div class="export-a" id="ex-takeaway"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Developmental Impact:</div>
+                <div class="export-a" id="ex-impact"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Limitation / Missed Opportunity:</div>
+                <div class="export-a" id="ex-limitation"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Overall Effectiveness:</div>
+                <div class="export-a" id="ex-effectiveness"></div>
+            </div>
+            <div class="export-qa">
+                <div class="export-q">Suggested Change:</div>
+                <div class="export-a" id="ex-change"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Link to external JavaScript -->
+<script src="script.js"></script>
+</body>
+</html>
